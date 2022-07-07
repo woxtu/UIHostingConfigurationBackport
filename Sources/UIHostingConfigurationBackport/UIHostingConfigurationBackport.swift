@@ -5,17 +5,23 @@ public struct UIHostingConfigurationBackport<Content, Background>: UIContentConf
   let content: Content
   let background: Background
   let margins: NSDirectionalEdgeInsets
+  let minWidth: CGFloat?
+  let minHeight: CGFloat?
 
   public init(@ViewBuilder content: () -> Content) where Background == EmptyView {
     self.content = content()
     background = .init()
     margins = .zero
+    minWidth = nil
+    minHeight = nil
   }
 
-  init(content: Content, background: Background, margins: NSDirectionalEdgeInsets) {
+  init(content: Content, background: Background, margins: NSDirectionalEdgeInsets, minWidth: CGFloat?, minHeight: CGFloat?) {
     self.content = content
     self.background = background
     self.margins = margins
+    self.minWidth = minWidth
+    self.minHeight = minHeight
   }
 
   public func makeContentView() -> UIView & UIContentView {
@@ -30,7 +36,9 @@ public struct UIHostingConfigurationBackport<Content, Background>: UIContentConf
     return UIHostingConfigurationBackport<Content, _UIHostingConfigurationBackgroundViewBackport<S>>(
       content: content,
       background: .init(style: style),
-      margins: margins
+      margins: margins,
+      minWidth: minWidth,
+      minHeight: minHeight
     )
   }
 
@@ -38,7 +46,9 @@ public struct UIHostingConfigurationBackport<Content, Background>: UIContentConf
     return UIHostingConfigurationBackport<Content, B>(
       content: self.content,
       background: content(),
-      margins: margins
+      margins: margins,
+      minWidth: minWidth,
+      minHeight: minHeight
     )
   }
 
@@ -46,7 +56,9 @@ public struct UIHostingConfigurationBackport<Content, Background>: UIContentConf
     return UIHostingConfigurationBackport<Content, Background>(
       content: content,
       background: background,
-      margins: .init(insets)
+      margins: .init(insets),
+      minWidth: minWidth,
+      minHeight: minHeight
     )
   }
 
@@ -59,7 +71,19 @@ public struct UIHostingConfigurationBackport<Content, Background>: UIContentConf
         leading: edges.contains(.leading) ? length : margins.leading,
         bottom: edges.contains(.bottom) ? length : margins.bottom,
         trailing: edges.contains(.trailing) ? length : margins.trailing
-      )
+      ),
+      minWidth: minWidth,
+      minHeight: minHeight
+    )
+  }
+
+  public func minSize(width: CGFloat? = nil, height: CGFloat? = nil) -> UIHostingConfigurationBackport<Content, Background> {
+    return UIHostingConfigurationBackport<Content, Background>(
+      content: content,
+      background: background,
+      margins: margins,
+      minWidth: width,
+      minHeight: height
     )
   }
 }
@@ -82,6 +106,19 @@ final class UIHostingContentViewBackport<Content, Background>: UIView, UIContent
         directionalLayoutMargins = configuration.margins
       }
     }
+  }
+
+  override var intrinsicContentSize: CGSize {
+    var intrinsicContentSize = super.intrinsicContentSize
+    if let configuration = configuration as? UIHostingConfigurationBackport<Content, Background> {
+      if let width = configuration.minWidth {
+        intrinsicContentSize.width = max(intrinsicContentSize.width, width)
+      }
+      if let height = configuration.minHeight {
+        intrinsicContentSize.height = max(intrinsicContentSize.height, height)
+      }
+    }
+    return intrinsicContentSize
   }
 
   init(configuration: UIContentConfiguration) {
