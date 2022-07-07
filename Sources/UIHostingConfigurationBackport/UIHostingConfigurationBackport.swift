@@ -1,25 +1,46 @@
 import SwiftUI
 import UIKit
 
-public struct UIHostingConfigurationBackport<Content>: UIContentConfiguration where Content: View {
+public struct UIHostingConfigurationBackport<Content, Background>: UIContentConfiguration where Content: View, Background: View {
   let content: Content
+  let background: Background
 
-  public init(@ViewBuilder content: () -> Content) {
+  public init(@ViewBuilder content: () -> Content) where Background == EmptyView {
     self.content = content()
+    background = .init()
+  }
+
+  init(content: Content, background: Background) {
+    self.content = content
+    self.background = background
   }
 
   public func makeContentView() -> UIView & UIContentView {
-    return UIHostingContentViewBackport<Content>(configuration: self)
+    return UIHostingContentViewBackport<Content, Background>(configuration: self)
   }
 
   public func updated(for state: UIConfigurationState) -> UIHostingConfigurationBackport {
     return self
   }
+
+  public func background<S>(_ style: S) -> UIHostingConfigurationBackport<Content, _UIHostingConfigurationBackgroundViewBackport<S>> where S: ShapeStyle {
+    return UIHostingConfigurationBackport<Content, _UIHostingConfigurationBackgroundViewBackport<S>>(
+      content: content,
+      background: .init(style: style)
+    )
+  }
+
+  public func background<B>(@ViewBuilder content: () -> B) -> UIHostingConfigurationBackport<Content, B> where B: View {
+    return UIHostingConfigurationBackport<Content, B>(
+      content: self.content,
+      background: content()
+    )
+  }
 }
 
-final class UIHostingContentViewBackport<Content>: UIView, UIContentView where Content: View {
-  private let hostingController: UIHostingController<Content?> = {
-    let controller = UIHostingController<Content?>(rootView: nil)
+final class UIHostingContentViewBackport<Content, Background>: UIView, UIContentView where Content: View, Background: View {
+  private let hostingController: UIHostingController<ZStack<TupleView<(Background, Content)>>?> = {
+    let controller = UIHostingController<ZStack<TupleView<(Background, Content)>>?>(rootView: nil)
     controller.view.backgroundColor = .clear
     controller.view.translatesAutoresizingMaskIntoConstraints = false
     return controller
@@ -27,8 +48,11 @@ final class UIHostingContentViewBackport<Content>: UIView, UIContentView where C
 
   var configuration: UIContentConfiguration {
     didSet {
-      if let configuration = configuration as? UIHostingConfigurationBackport<Content> {
-        hostingController.rootView = configuration.content
+      if let configuration = configuration as? UIHostingConfigurationBackport<Content, Background> {
+        hostingController.rootView = ZStack {
+          configuration.background
+          configuration.content
+        }
       }
     }
   }
@@ -60,6 +84,14 @@ final class UIHostingContentViewBackport<Content>: UIView, UIContentView where C
       parentViewController?.addChild(hostingController)
       hostingController.didMove(toParent: parentViewController)
     }
+  }
+}
+
+public struct _UIHostingConfigurationBackgroundViewBackport<S>: View where S: ShapeStyle {
+  let style: S
+
+  public var body: some View {
+    Rectangle().fill(style)
   }
 }
 
