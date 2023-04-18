@@ -98,13 +98,7 @@ final class UIHostingContentViewBackport<Content, Background>: UIView, UIContent
 
   var configuration: UIContentConfiguration {
     didSet {
-      if let configuration = configuration as? UIHostingConfigurationBackport<Content, Background> {
-        hostingController.rootView = ZStack {
-          configuration.background
-          configuration.content
-        }
-        directionalLayoutMargins = configuration.margins
-      }
+      applyConfiguration()
     }
   }
 
@@ -147,6 +141,16 @@ final class UIHostingContentViewBackport<Content, Background>: UIView, UIContent
     } else {
       parentViewController?.addChild(hostingController)
       hostingController.didMove(toParent: parentViewController)
+    }
+  }
+
+  private func applyConfiguration() {
+    if let configuration = configuration as? UIHostingConfigurationBackport<Content, Background> {
+      hostingController.rootView = ZStack {
+        configuration.background
+        configuration.content
+      }
+      directionalLayoutMargins = configuration.margins
     }
   }
 }
