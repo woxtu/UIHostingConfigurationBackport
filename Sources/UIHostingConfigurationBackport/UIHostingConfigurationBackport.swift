@@ -127,6 +127,8 @@ final class UIHostingContentViewBackport<Content, Background>: UIView, UIContent
       hostingController.view.bottomAnchor.constraint(equalTo: layoutMarginsGuide.bottomAnchor),
       hostingController.view.trailingAnchor.constraint(equalTo: layoutMarginsGuide.trailingAnchor),
     ])
+
+    applyConfiguration()
   }
 
   @available(*, unavailable)
